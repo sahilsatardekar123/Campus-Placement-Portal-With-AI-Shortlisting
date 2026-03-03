@@ -1,0 +1,17 @@
+# Dependencies
+node_modules
+*/node_modules
+
+# Portable DB
+pgsql/
+
+# Environment variables
+.env
+.env.local
+
+# MacOS
+.DS_Store
+
+# Frontend build
+dist/
+build/
