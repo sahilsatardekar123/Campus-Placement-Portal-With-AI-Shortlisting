@@ -13,7 +13,7 @@ const Navbar = () => {
                     <div className="flex items-center">
                         <div className="flex-shrink-0 flex items-center gap-2">
                             <Briefcase className="h-6 w-6 text-brand-600" />
-                            <Link to="/" className="text-xl font-bold text-gray-900 tracking-tight">Placement<span className="text-brand-600">AI</span></Link>
+                            <Link to="/" className="text-xl font-bold text-gray-900 tracking-tight">SkillSync<span className="text-brand-600">Campus</span></Link>
                         </div>
                     </div>
                     <div className="flex items-center space-x-4">

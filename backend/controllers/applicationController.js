@@ -81,7 +81,7 @@ const getJobApplicants = async (req, res, next) => {
 
         // Fetch applicants + students + rankings, ordered by match_score DESC
         const applicants = await db.query(
-            `SELECT a.applied_at, s.full_name, s.branch, s.graduation_year, s.cgpa, s.skills, s.experience, s.projects, u.email,
+            `SELECT a.applied_at, s.full_name, s.branch, s.graduation_year, s.cgpa, s.skills, s.experience, s.projects, s.resume_url, u.email,
                     r.match_score, r.matched_skills, r.missing_skills
              FROM applications a
              JOIN students s ON a.student_id = s.user_id
@@ -104,11 +104,12 @@ const getStudentApplications = async (req, res, next) => {
 
         // Fetch jobs student applied to
         const result = await db.query(
-            `SELECT a.applied_at, j.title, j.skills_required, r.company_name, rk.match_score
+            `SELECT a.applied_at, j.id as job_id, j.title, j.skills_required, r.company_name, rk.match_score, s.resume_url
              FROM applications a
              JOIN jobs j ON a.job_id = j.id
              JOIN recruiters r ON j.recruiter_id = r.user_id
              JOIN rankings rk ON a.student_id = rk.student_id AND a.job_id = rk.job_id
+             JOIN students s ON a.student_id = s.user_id
              WHERE a.student_id = $1
              ORDER BY a.applied_at DESC`,
             [studentId]
@@ -120,4 +121,42 @@ const getStudentApplications = async (req, res, next) => {
     }
 };
 
-module.exports = { applyForJob, getJobApplicants, getStudentApplications };
+const withdrawApplication = async (req, res, next) => {
+    try {
+        const studentId = req.user.id;
+        const { jobId } = req.params;
+
+        // Verify application exists
+        const checkApp = await db.query(
+            'SELECT * FROM applications WHERE student_id = $1 AND job_id = $2',
+            [studentId, jobId]
+        );
+
+        if (checkApp.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'Application not found' });
+        }
+
+        await db.query('BEGIN');
+
+        // Delete from rankings first (foreign key / dependency safety)
+        await db.query(
+            'DELETE FROM rankings WHERE student_id = $1 AND job_id = $2',
+            [studentId, jobId]
+        );
+
+        // Delete from applications
+        await db.query(
+            'DELETE FROM applications WHERE student_id = $1 AND job_id = $2',
+            [studentId, jobId]
+        );
+
+        await db.query('COMMIT');
+
+        res.json({ success: true, message: 'Application withdrawn successfully' });
+    } catch (error) {
+        await db.query('ROLLBACK');
+        next(error);
+    }
+}
+
+module.exports = { applyForJob, getJobApplicants, getStudentApplications, withdrawApplication };

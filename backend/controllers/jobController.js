@@ -50,4 +50,27 @@ const getRecruiterJobs = async (req, res, next) => {
     }
 };
 
-module.exports = { createJob, getJobs, getRecruiterJobs };
+const deleteJob = async (req, res, next) => {
+    try {
+        const recruiterId = req.user.id;
+        const jobId = req.params.id;
+
+        // Verify the job belongs to this recruiter
+        const checkResult = await db.query(
+            'SELECT id FROM jobs WHERE id = $1 AND recruiter_id = $2',
+            [jobId, recruiterId]
+        );
+
+        if (checkResult.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'Job not found or unauthorized' });
+        }
+
+        await db.query('DELETE FROM jobs WHERE id = $1', [jobId]);
+
+        res.json({ success: true, message: 'Job deleted successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = { createJob, getJobs, getRecruiterJobs, deleteJob };
