@@ -57,7 +57,7 @@ const RecruiterDashboard = () => {
             await api.delete(`/jobs/${jobId}`);
             setMessage('Job deleted successfully.');
             fetchJobs(); // Refresh the list
-            if (selectedJob?.id === jobId) setSelectedJob(null);
+            if (selectedJob?._id === jobId) setSelectedJob(null);
         } catch (error) {
             console.error('Failed to delete job', error);
             setMessage('Failed to delete job.');
@@ -69,7 +69,7 @@ const RecruiterDashboard = () => {
         setSelectedJob(job);
         setActiveTab('applicants');
         try {
-            const res = await api.get(`/applications/${job.id}/applicants`);
+            const res = await api.get(`/applications/${job._id}/applicants`);
             setApplicants(res.data.data);
         } catch (error) {
             console.error(error);
@@ -108,7 +108,7 @@ const RecruiterDashboard = () => {
                 {activeTab === 'jobs' && (
                     <div className="space-y-4">
                         {jobs.length === 0 ? <p className="text-gray-500">No jobs posted yet.</p> : jobs.map(job => (
-                            <div key={job.id} className="border border-gray-200 rounded-lg p-6 flex justify-between items-center hover:shadow-md transition-shadow">
+                            <div key={job._id} className="border border-gray-200 rounded-lg p-6 flex justify-between items-center hover:shadow-md transition-shadow">
                                 <div>
                                     <h3 className="text-lg font-bold text-gray-900">{job.title}</h3>
                                     <p className="text-sm text-gray-500 mt-1">Skills: {job.skills_required}</p>
@@ -122,7 +122,7 @@ const RecruiterDashboard = () => {
                                         View AI Ranking
                                     </button>
                                     <button
-                                        onClick={() => handleDeleteJob(job.id)}
+                                        onClick={() => handleDeleteJob(job._id)}
                                         className="bg-red-50 text-red-600 hover:bg-red-100 p-2 rounded-md transition"
                                         title="Delete Job"
                                     >

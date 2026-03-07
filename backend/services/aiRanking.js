@@ -72,16 +72,23 @@ const calculateMatchScore = (student, job) => {
     skillSim = Math.max(0, Math.min(skillSim, 1));
 
     // 2. CGPA Score (0 - 1)
-    const cgpaScore = Math.max(0, Math.min(student.cgpa / 10, 1));
+    const cgpa = Number(student.cgpa) || 0;
+    const cgpaScore = Math.max(0, Math.min(cgpa / 10, 1));
 
     // 3. Experience Match (0 - 1)
     let expMatch = 1;
-    if (job.exp_required > 0) {
-        expMatch = Math.min(student.experience / job.exp_required, 1);
+    const studentExp = Number(student.experience) || 0;
+    const reqExp = Number(job.exp_required) || 0;
+
+    if (reqExp > 0) {
+        expMatch = Math.min(studentExp / reqExp, 1);
+    } else {
+        expMatch = 1; // If no experience is required, they get full points
     }
 
     // Final Formula
-    const match_score = (skillSim * 0.6) + (cgpaScore * 0.2) + (expMatch * 0.2);
+    let match_score = (skillSim * 0.6) + (cgpaScore * 0.2) + (expMatch * 0.2);
+    if (isNaN(match_score)) match_score = 0;
 
     // Identify matched and missing skills
     const matched_skills = requiredSkills.filter(reqSkill =>

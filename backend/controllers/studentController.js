@@ -1,22 +1,25 @@
 // controllers/studentController.js
-const db = require('../db');
+const Student = require('../models/Student');
+const User = require('../models/User');
 
 const getProfile = async (req, res, next) => {
     try {
         const studentId = req.user.id;
-        const result = await db.query(
-            `SELECT u.email, s.* 
-             FROM users u 
-             JOIN students s ON u.id = s.user_id 
-             WHERE u.id = $1`,
-            [studentId]
-        );
+        const student = await Student.findOne({ user_id: studentId }).populate('user_id', 'email');
 
-        if (result.rows.length === 0) {
+        if (!student) {
             return res.status(404).json({ success: false, error: 'Student not found' });
         }
 
-        res.json({ success: true, data: result.rows[0] });
+        // Format to match old SQL response: email at top level, with student fields
+        const responseData = {
+            ...student.toObject(),
+            email: student.user_id.email
+        };
+        // avoid duplicating user_id object
+        responseData.user_id = studentId;
+
+        res.json({ success: true, data: responseData });
     } catch (error) {
         next(error);
     }
@@ -27,15 +30,20 @@ const updateProfile = async (req, res, next) => {
         const studentId = req.user.id;
         const { full_name, branch, graduation_year, cgpa, skills, experience, projects, resume_url } = req.body;
 
-        const result = await db.query(
-            `UPDATE students 
-             SET full_name = $1, branch = $2, graduation_year = $3, cgpa = $4, 
-                 skills = $5, experience = $6, projects = $7, resume_url = $8, updated_at = CURRENT_TIMESTAMP
-             WHERE user_id = $9 RETURNING *`,
-            [full_name, branch, graduation_year, cgpa, skills, experience, projects, resume_url, studentId]
+        const updatedStudent = await Student.findOneAndUpdate(
+            { user_id: studentId },
+            {
+                full_name, branch, graduation_year, cgpa,
+                skills, experience, projects, resume_url
+            },
+            { new: true, runValidators: true }
         );
 
-        res.json({ success: true, data: result.rows[0] });
+        if (!updatedStudent) {
+            return res.status(404).json({ success: false, error: 'Student not found' });
+        }
+
+        res.json({ success: true, data: updatedStudent });
     } catch (error) {
         next(error);
     }
@@ -62,8 +70,7 @@ const parseResume = async (req, res, next) => {
                 const stream = cloudinary.uploader.upload_stream(
                     {
                         folder: 'placement_resumes',
-                        resource_type: 'raw',
-                        format: 'pdf'
+                        resource_type: 'auto'
                     },
                     (error, result) => {
                         if (error) return reject(error);

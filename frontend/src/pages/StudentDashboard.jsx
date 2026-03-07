@@ -54,7 +54,10 @@ const StudentDashboard = () => {
             setMessage(`Applied successfully! Match Score: ${res.data.rank.match_score}`);
             fetchData(); // Refresh apps
         } catch (err) {
-            setMessage(err.response?.data?.error || 'Failed to apply');
+            const errorMsg = err.response?.data?.errors
+                ? err.response.data.errors.map(e => e.msg).join(', ')
+                : err.response?.data?.error || 'Failed to apply';
+            setMessage(errorMsg);
         }
         setTimeout(() => setMessage(''), 5000);
     };
@@ -203,18 +206,21 @@ const StudentDashboard = () => {
                 {activeTab === 'jobs' && (
                     <div className="space-y-4">
                         {jobs.length === 0 ? <p className="text-gray-500">No jobs available right now.</p> : jobs.map(job => (
-                            <div key={job.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                            <div key={job._id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <h3 className="text-lg font-bold text-gray-900">{job.title}</h3>
-                                        <p className="text-sm text-gray-500">{job.company_name}</p>
+                                        <div className="flex items-center mt-1">
+                                            <Briefcase className="w-4 h-4 text-gray-400 mr-2" />
+                                            <p className="text-sm font-medium text-brand-600">{job.company_name}</p>
+                                        </div>
                                     </div>
                                     <button
-                                        onClick={() => handleApply(job.id)}
-                                        disabled={appliedJobIds.has(job.id)}
-                                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${appliedJobIds.has(job.id) ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-brand-100 text-brand-700 hover:bg-brand-200'}`}
+                                        onClick={() => handleApply(job._id)}
+                                        disabled={appliedJobIds.has(job._id)}
+                                        className={`px-4 py-2 rounded-md text-sm font-medium transition ${appliedJobIds.has(job._id) ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-brand-100 text-brand-700 hover:bg-brand-200'}`}
                                     >
-                                        {appliedJobIds.has(job.id) ? 'Applied' : 'Apply Now'}
+                                        {appliedJobIds.has(job._id) ? 'Applied' : 'Apply Now'}
                                     </button>
                                 </div>
                                 <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -260,10 +266,12 @@ const StudentDashboard = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            {app.resume_url && (
-                                                <a href={app.resume_url} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:text-brand-900 mr-4">
+                                            {app.resume_url ? (
+                                                <a href={app.resume_url} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:text-brand-900 mr-4 font-semibold">
                                                     View Resume
                                                 </a>
+                                            ) : (
+                                                <span className="text-gray-400 mr-4 italic cursor-not-allowed" title="No resume uploaded">No Resume</span>
                                             )}
                                             <button onClick={() => handleWithdraw(app.job_id)} className="text-red-600 hover:text-red-900 transition-colors">
                                                 Withdraw

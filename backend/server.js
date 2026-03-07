@@ -12,6 +12,10 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
+// Connect to Database
+const connectDB = require('./db');
+connectDB();
+
 // Rate Limiting
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes

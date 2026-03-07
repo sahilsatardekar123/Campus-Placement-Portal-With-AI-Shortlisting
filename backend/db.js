@@ -1,11 +1,15 @@
-const { Pool } = require('pg');
+const mongoose = require('mongoose');
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    // Enable SSL for Render production, disable for local if not needed
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
-
-module.exports = {
-    query: (text, params) => pool.query(text, params),
+const connectDB = async () => {
+    try {
+        const conn = await mongoose.connect(process.env.MONGO_URI, {
+            // Mongoose 6+ has these enabled by default, but keeping them is fine
+        });
+        console.log(`MongoDB Connected: ${conn.connection.host}`);
+    } catch (error) {
+        console.error(`Error connecting to MongoDB: ${error.message}`);
+        process.exit(1);
+    }
 };
+
+module.exports = connectDB;

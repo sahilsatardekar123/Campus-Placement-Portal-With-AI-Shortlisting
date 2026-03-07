@@ -1,21 +1,29 @@
 // controllers/jobController.js
-const db = require('../db');
+const Job = require('../models/Job');
+const Recruiter = require('../models/Recruiter');
 
 const createJob = async (req, res, next) => {
     try {
-        const recruiterId = req.user.id;
+        const userId = req.user.id;
+        const recruiter = await Recruiter.findOne({ user_id: userId });
+        if (!recruiter) {
+            return res.status(403).json({ success: false, error: 'Recruiter profile not found' });
+        }
+        const recruiterId = recruiter._id;
         const { title, skills_required, min_cgpa, exp_required, description } = req.body;
 
-        const result = await db.query(
-            `INSERT INTO jobs (recruiter_id, title, skills_required, min_cgpa, exp_required, description) 
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-            [recruiterId, title, skills_required, min_cgpa || 0, exp_required || 0, description]
-        );
+        const newJob = new Job({
+            recruiter_id: recruiterId,
+            title,
+            skills_required,
+            min_cgpa: min_cgpa || 0,
+            exp_required: exp_required || 0,
+            description
+        });
 
-        // TODO: Could trigger recalculation for all existing students if needed, 
-        // but typically students apply *after* job creation.
+        await newJob.save();
 
-        res.status(201).json({ success: true, data: result.rows[0] });
+        res.status(201).json({ success: true, data: newJob });
     } catch (error) {
         next(error);
     }
@@ -23,14 +31,21 @@ const createJob = async (req, res, next) => {
 
 const getJobs = async (req, res, next) => {
     try {
-        const result = await db.query(
-            `SELECT j.*, r.company_name 
-             FROM jobs j 
-             JOIN recruiters r ON j.recruiter_id = r.user_id 
-             ORDER BY j.created_at DESC`
-        );
+        const jobs = await Job.find()
+            .populate('recruiter_id', 'company_name')
+            .sort({ created_at: -1 });
 
-        res.json({ success: true, data: result.rows });
+        // Format response to match expected output structure where company_name is at the top level
+        const formattedJobs = jobs.map(job => {
+            const jobObj = job.toObject();
+            return {
+                ...jobObj,
+                company_name: job.recruiter_id ? job.recruiter_id.company_name : null,
+                recruiter_id: job.recruiter_id ? job.recruiter_id._id : null
+            };
+        });
+
+        res.json({ success: true, data: formattedJobs });
     } catch (error) {
         next(error);
     }
@@ -38,13 +53,14 @@ const getJobs = async (req, res, next) => {
 
 const getRecruiterJobs = async (req, res, next) => {
     try {
-        const recruiterId = req.user.id;
-        const result = await db.query(
-            `SELECT * FROM jobs WHERE recruiter_id = $1 ORDER BY created_at DESC`,
-            [recruiterId]
-        );
+        const userId = req.user.id;
+        const recruiter = await Recruiter.findOne({ user_id: userId });
+        if (!recruiter) {
+            return res.status(403).json({ success: false, error: 'Recruiter profile not found' });
+        }
+        const jobs = await Job.find({ recruiter_id: recruiter._id }).sort({ created_at: -1 });
 
-        res.json({ success: true, data: result.rows });
+        res.json({ success: true, data: jobs });
     } catch (error) {
         next(error);
     }
@@ -52,20 +68,21 @@ const getRecruiterJobs = async (req, res, next) => {
 
 const deleteJob = async (req, res, next) => {
     try {
-        const recruiterId = req.user.id;
+        const userId = req.user.id;
+        const recruiter = await Recruiter.findOne({ user_id: userId });
+        if (!recruiter) {
+            return res.status(403).json({ success: false, error: 'Recruiter profile not found' });
+        }
         const jobId = req.params.id;
 
         // Verify the job belongs to this recruiter
-        const checkResult = await db.query(
-            'SELECT id FROM jobs WHERE id = $1 AND recruiter_id = $2',
-            [jobId, recruiterId]
-        );
+        const job = await Job.findOne({ _id: jobId, recruiter_id: recruiter._id });
 
-        if (checkResult.rows.length === 0) {
+        if (!job) {
             return res.status(404).json({ success: false, error: 'Job not found or unauthorized' });
         }
 
-        await db.query('DELETE FROM jobs WHERE id = $1', [jobId]);
+        await Job.deleteOne({ _id: jobId });
 
         res.json({ success: true, message: 'Job deleted successfully' });
     } catch (error) {

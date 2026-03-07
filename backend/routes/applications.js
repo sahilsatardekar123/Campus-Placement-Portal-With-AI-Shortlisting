@@ -10,7 +10,7 @@ router.use(auth);
 
 // Student applying for a job
 router.post('/', authorizeRole('student'), [
-    body('job_id').isInt().withMessage('Valid Job ID is required'),
+    body('job_id').isMongoId().withMessage('Valid Job ID is required'),
     validateRequest
 ], applyForJob);
 
